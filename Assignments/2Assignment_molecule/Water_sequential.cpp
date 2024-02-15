@@ -290,8 +290,8 @@ System MakeWater(int N_molecules){
     System sys;
     for (int i = 0; i < N_molecules; i++){
         Vec3 P0{i * 0.2, i * 0.2, 0};
+        Hatom1.p = {P0.x +L0*sin(angle/2), P0.y+L0*cos(angle/2), P0.z};
         Oatom.p  = {P0.x, P0.y, P0.z};
-        Hatom1.p = {P0.x+L0*sin(angle/2), P0.y+L0*cos(angle/2), P0.z};
         Hatom2.p = {P0.x-L0*sin(angle/2), P0.y+L0*cos(angle/2), P0.z};
         std::vector<Atom> atoms {Oatom, Hatom1, Hatom2};
 
