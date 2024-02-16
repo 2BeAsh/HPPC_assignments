@@ -1,0 +1,17 @@
+    # $(CXX) Water_vectorised.cpp $(CXXFLAGS) -fopenmp-simd -o vec
+
+
+
+Vectorized, 1 mil steps
+
+N_{mol} & Function highest contr. & \% contributed & Time \\
+2 & UpdateNonBondedForces & 54.55 & 0.30 \\
+4 & UpdateNonBondedForces & 71.43 & 1.15 \\
+16 & UpdateNonBondedForces & 93.74 & 19.03 \\
+128 & UpdateNonBondedForces & 99.17 & 1215 \\
+
+
+
+
+
+Benchmark OpenMP simd

@@ -244,7 +244,7 @@ void Evolve(System &sys, Sim_Configuration &sc){
     // Drift positions: Loop over molecules and atoms inside the molecules
     for (Molecule& molecule : sys.molecules)
     for (auto& atom : molecule.atoms){
-        atom.v += sc.dt/atom.mass*atom.f;    // Update the velocities
+        atom.v += sc.dt / atom.mass * atom.f;    // Update the velocities
         atom.f  = {0,0,0};                   // set the forces zero to prepare for next potential calculation
         atom.p += sc.dt* atom.v;             // update position
     }
