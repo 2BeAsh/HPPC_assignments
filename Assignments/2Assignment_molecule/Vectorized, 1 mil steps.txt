@@ -14,4 +14,6 @@ N_{mol} & Function highest contr. & \% contributed & Time \\
 
 
 
-Benchmark OpenMP simd
+Benchmark OpenMP simd, 16 mol, 
+Function highest contr. & \% contributed & Time \\
+UpdateNonBondedForces & \& 90 & 0.18
