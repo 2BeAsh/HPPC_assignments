@@ -24,6 +24,10 @@ const int n_cuts = 3;
 const long n_settings = (long) pow(n_cuts,8);
 const long NO_MORE_TASKS = n_settings+1;
 
+// My parameters
+std::array<double,8> setting_k;
+double accuracy_k;
+
 // Class to hold the main data set together with a bit of statistics
 class Data {
 public:
@@ -158,8 +162,23 @@ void master (int nworker, Data& ds) {
 
     // THIS CODE SHOULD BE REPLACED BY TASK FARM
     // loop over all possible cuts and evaluate accuracy
-    for (long k=0; k<n_settings; k++)
-        accuracy[k] = task_function(settings[k], ds);
+    for (long k=0; k<n_settings; k++){
+        //accuracy[k] = task_function(settings[k], ds);
+
+        // -- My code --
+        // Send setting to workers
+        // First get rank of random worker
+        std::random_device rd;
+        std::default_random_engine engine;
+        engine.seed(42);
+        std::uniform_int_distribution<int> distribution(1, nworker+1);
+        int worker_rank = distribution(engine);
+        setting_k = settings[k];
+        MPI_Send(&setting_k, 8, MPI_DOUBLE, worker_rank, 0, MPI_COMM_WORLD);  // Choose tag=0 arbitrarily
+        // Get accuracy from worker
+        MPI_Recv(&accuracy_k, 1, MPI_DOUBLE, worker_rank, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        accuracy[k] = accuracy_k;
+    }
     // THIS CODE SHOULD BE REPLACED BY TASK FARM
     // ================================================================
 
@@ -188,10 +207,12 @@ void master (int nworker, Data& ds) {
 }
 
 void worker (int rank, Data& ds) {
-    /*
-    IMPLEMENT HERE THE CODE FOR THE WORKER
-    Use a call to "task_function" to complete a task and return accuracy to master.
-    */
+    // Receive setting from Master
+    MPI_Recv(&setting_k, 8, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    // Perform task i.e. get accuracy
+    accuracy_k = task_function(setting_k, ds);
+    // Send accuracy to Master
+    MPI_Send(&accuracy_k, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
 }
 
 int main(int argc, char *argv[]) {
