@@ -21,17 +21,13 @@
 // BEWARE! Generates n_cuts^8 permutations to analyse.
 // If you run many workers, you may want to increase from 3.
 const int n_cuts = 3;
-const long n_settings = (long) pow(n_cuts,8);
-const long NO_MORE_TASKS = n_settings+1;
-
-// My parameters
-std::array<double,8> setting_k;
-double accuracy_k;
+const long n_settings = (long)pow(n_cuts, 8);
+const long NO_MORE_TASKS = n_settings + 1;
 
 // Class to hold the main data set together with a bit of statistics
 class Data {
 public:
-    long nevents=0;
+    long nevents = 0;
     std::string name[8] = { "averageInteractionsPerCrossing", "p_Rhad","p_Rhad1",
                             "p_TRTTrackOccupancy", "p_topoetcone40", "p_eTileGap3Cluster",
                             "p_phiModCalo", "p_etaModCalo" };
@@ -42,14 +38,14 @@ public:
 
     std::vector<bool> signal;                // True if p_truthType=2
 
-    std::array<double,8> means_sig {0}, means_bckg {0}; // mean of signal and background for events
-    std::array<double,8> flip; // flip sign if background larger than signal for type of event
+    std::array<double, 8> means_sig{ 0 }, means_bckg{ 0 }; // mean of signal and background for events
+    std::array<double, 8> flip; // flip sign if background larger than signal for type of event
 };
 
 // Routine to read events data from csv file and calculate a bit of statistics
 Data read_data() {
     // name of data file
-    std::string filename="mc_ggH_16_13TeV_Zee_EGAM1_calocells_16249871.csv";
+    std::string filename = "mc_ggH_16_13TeV_Zee_EGAM1_calocells_16249871.csv";
     std::ifstream csvfile(filename); // open file
 
     std::string line;
@@ -57,11 +53,11 @@ Data read_data() {
 
     Data ds; // variable to hold all data of the file
 
-    while (std::getline(csvfile,line)) {  // loop over lines until end of file
+    while (std::getline(csvfile, line)) {  // loop over lines until end of file
         if (line.empty()) continue;       // skip empty lines
         std::istringstream iss(line);
         std::string element;
-        std::array<double,8> data;
+        std::array<double, 8> data;
 
         // read in one line of data in to class        
         std::getline(iss, element, ','); // line counter, skip it
@@ -73,7 +69,7 @@ Data read_data() {
         ds.p_nTracks.push_back(std::stol(element));
         // Load in a loop the 7 next data points: 
         // p_Rhad, p_Rhad1, p_TRTTrackOccupancy, p_topoetcone40, p_eTileGap3Cluster, p_phiModCalo, p_etaModCalo
-        for(int i=1; i<8; i++) {
+        for (int i = 1; i < 8; i++) {
             std::getline(iss, element, ',');
             data[i] = std::stod(element);
         }
@@ -85,63 +81,64 @@ Data read_data() {
 
     // Calculate means. Signal has p_truthType = 2
     ds.signal.resize(ds.nevents);
-    long nsig=0, nbckg=0;
-    for (long ev=0; ev<ds.nevents; ev++) {
+    long nsig = 0, nbckg = 0;
+    for (long ev = 0; ev < ds.nevents; ev++) {
         ds.signal[ev] = ds.p_truthType[ev] == 2;
         if (ds.signal[ev]) {
-            for(int i=0; i<8; i++) ds.means_sig[i] += ds.data[ev][i];
+            for (int i = 0; i < 8; i++) ds.means_sig[i] += ds.data[ev][i];
             nsig++;
-        } else {
-            for(int i=0; i<8; i++) ds.means_bckg[i] += ds.data[ev][i];
+        }
+        else {
+            for (int i = 0; i < 8; i++) ds.means_bckg[i] += ds.data[ev][i];
             nbckg++;
         }
     }
-    for(int i=0; i<8; i++) {
-        ds.means_sig[i]  = ds.means_sig[i] / nsig;
+    for (int i = 0; i < 8; i++) {
+        ds.means_sig[i] = ds.means_sig[i] / nsig;
         ds.means_bckg[i] = ds.means_bckg[i] / nbckg;
     }
-    
+
     // check for flip and change sign of data and means if needed
-    for(int i=0; i<8; i++) {
-        ds.flip[i]= (ds.means_bckg[i] < ds.means_sig[i]) ? -1 : 1;
-        for (long ev=0; ev<ds.nevents; ev++) ds.data[ev][i] *= ds.flip[i];
-        ds.means_sig[i]  = ds.means_sig[i] * ds.flip[i];
+    for (int i = 0; i < 8; i++) {
+        ds.flip[i] = (ds.means_bckg[i] < ds.means_sig[i]) ? -1 : 1;
+        for (long ev = 0; ev < ds.nevents; ev++) ds.data[ev][i] *= ds.flip[i];
+        ds.means_sig[i] = ds.means_sig[i] * ds.flip[i];
         ds.means_bckg[i] = ds.means_bckg[i] * ds.flip[i];
     }
 
-   return ds;
+    return ds;
 }
 
 // call this function to complete the task. It calculates the accuracy of a given set of settings
-double task_function(std::array<double,8>& setting, Data& ds) {
+double task_function(std::array<double, 8>& setting, Data& ds) {
     // pred evalautes to true if cuts for events are satisfied for all cuts
-    std::vector<bool> pred(ds.nevents,true);
-    for (long ev=0; ev<ds.nevents; ev++)
-        for (int i=0; i<8; i++)
+    std::vector<bool> pred(ds.nevents, true);
+    for (long ev = 0; ev < ds.nevents; ev++)
+        for (int i = 0; i < 8; i++)
             pred[ev] = pred[ev] and (ds.data[ev][i] < setting[i]);
 
     // accuracy is percentage of events that are predicted as true signal if and only if a true signal
-    double acc=0;
-    for (long ev=0; ev<ds.nevents; ev++) acc += pred[ev] == ds.signal[ev];
+    double acc = 0;
+    for (long ev = 0; ev < ds.nevents; ev++) acc += pred[ev] == ds.signal[ev];
 
     return acc / ds.nevents;
 }
 
-void master (int nworker, Data& ds) {
-    std::array<std::array<double,8>,n_cuts> ranges; // ranges for cuts to explore
+void master(int nworker, Data& ds) {
+    std::array<std::array<double, 8>, n_cuts> ranges; // ranges for cuts to explore
 
     // loop over different event channels and set up cuts
-    for(int i=0; i<8; i++) {
-        for (int j=0; j<n_cuts; j++)
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < n_cuts; j++)
             ranges[j][i] = ds.means_sig[i] + j * (ds.means_bckg[i] - ds.means_sig[i]) / n_cuts;
     }
-    
+
     // generate list of all permutations of the cuts for each channel
-    std::vector<std::array<double,8>> settings(n_settings);
-    for (long k=0; k<n_settings; k++) {
+    std::vector<std::array<double, 8>> settings(n_settings);
+    for (long k = 0; k < n_settings; k++) {
         long div = 1;
-        std::array<double,8> set;
-        for (int i=0; i<8; i++) {
+        std::array<double, 8> set;
+        for (int i = 0; i < 8; i++) {
             long idx = (k / div) % n_cuts;
             set[i] = ranges[idx][i];
             div *= n_cuts;
@@ -162,60 +159,100 @@ void master (int nworker, Data& ds) {
 
     // THIS CODE SHOULD BE REPLACED BY TASK FARM
     // loop over all possible cuts and evaluate accuracy
-    for (long k=0; k<n_settings; k++){
-        //accuracy[k] = task_function(settings[k], ds);
+    for (long k = 0; k < n_settings; k++)
+        accuracy[k] = task_function(settings[k], ds);
 
-        // -- My code --
-        // Send setting to workers
-        // First get rank of random worker
-        std::random_device rd;
-        std::default_random_engine engine;
-        engine.seed(42);
-        std::uniform_int_distribution<int> distribution(1, nworker+1);
-        int worker_rank = distribution(engine);
-        setting_k = settings[k];
-        MPI_Send(&setting_k, 8, MPI_DOUBLE, worker_rank, 0, MPI_COMM_WORLD);  // Choose tag=0 arbitrarily
-        // Get accuracy from worker
-        MPI_Recv(&accuracy_k, 1, MPI_DOUBLE, worker_rank, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        accuracy[k] = accuracy_k;
+
+
+
+
+    // -- OUR CODE --
+
+    // 1. Warmup
+    int number_of_tasks_sent = 0;
+    for (int i = 0; i < nworker; i++) {
+        MPI_Send(&settings[number_of_tasks_sent], 8, MPI_DOUBLE, i, number_of_tasks_sent, MPI_COMM_WORLD);
+        number_of_tasks_sent++;
     }
+
+    // 2. The while loop
+    int current_accuracy;
+    int accuracy_index;
+    int worker_source;
+    int send_tag;
+    MPI_Status status;
+    while (number_of_tasks_sent < n_settings) {
+        // Receive
+        MPI_Recv(&current_accuracy, 8, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        worker_source = status.MPI_SOURCE;
+        accuracy_index = status.MPI_TAG;
+
+        // Store result
+        accuracy[accuracy_index] = current_accuracy;
+
+        // Send message
+        send_tag = number_of_tasks_sent;
+        MPI_Send(&settings[number_of_tasks_sent], 8, MPI_DOUBLE, worker_source, send_tag, MPI_COMM_WORLD);
+        number_of_tasks_sent++;
+    }
+
+    int shutdown_tag = n_settings + 10;
+    for (int j = 1; j <= nworker; j++) {
+        // Receive result
+        MPI_Recv(&current_accuracy, 8, MPI_DOUBLE, j, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        worker_source = status.MPI_SOURCE;
+        accuracy_index = status.MPI_TAG;
+        accuracy[accuracy_index] = current_accuracy;
+        // Send shutdown message
+        std::array<double, 8> dummy_message = { 1, 1, 1, 1, 1, 1, 1, 1 };
+        MPI_Send(&dummy_message, 8, MPI_DOUBLE, worker_source, shutdown_tag, MPI_COMM_WORLD);
+    }
+
+
     // THIS CODE SHOULD BE REPLACED BY TASK FARM
     // ================================================================
 
     auto tend = std::chrono::high_resolution_clock::now(); // end time (nano-seconds)
     // diagnostics
     // extract index and value for best accuracy
-    double best_accuracy_score=0;
-    long idx_best=0;
-    for (long k=0; k<n_settings; k++)
+    double best_accuracy_score = 0;
+    long idx_best = 0;
+    for (long k = 0; k < n_settings; k++)
         if (accuracy[k] > best_accuracy_score) {
             best_accuracy_score = accuracy[k];
             idx_best = k;
         }
-    
+
     std::cout << "Best accuracy obtained :" << best_accuracy_score << "\n";
     std::cout << "Final cuts :\n";
-    for (int i=0; i<8; i++)
-        std::cout << std::setw(30) << ds.name[i] << " : " << settings[idx_best][i]*ds.flip[i] << "\n";
-    
-    std::cout <<  "\n";
-    std::cout <<  "Number of settings:" << std::setw(9) << n_settings << "\n";
-    std::cout <<  "Elapsed time      :" << std::setw(9) << std::setprecision(4)
-              << (tend - tstart).count()*1e-9 << "\n";
-    std::cout <<  "task time [mus]   :" << std::setw(9) << std::setprecision(4)
-              << (tend - tstart).count()*1e-3 / n_settings << "\n";
+    for (int i = 0; i < 8; i++)
+        std::cout << std::setw(30) << ds.name[i] << " : " << settings[idx_best][i] * ds.flip[i] << "\n";
+
+    std::cout << "\n";
+    std::cout << "Number of settings:" << std::setw(9) << n_settings << "\n";
+    std::cout << "Elapsed time      :" << std::setw(9) << std::setprecision(4)
+        << (tend - tstart).count() * 1e-9 << "\n";
+    std::cout << "task time [mus]   :" << std::setw(9) << std::setprecision(4)
+        << (tend - tstart).count() * 1e-3 / n_settings << "\n";
 }
 
-void worker (int rank, Data& ds) {
-    // Receive setting from Master
-    MPI_Recv(&setting_k, 8, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    // Perform task i.e. get accuracy
-    accuracy_k = task_function(setting_k, ds);
-    // Send accuracy to Master
-    MPI_Send(&accuracy_k, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+void worker(int rank, Data& ds) {
+    /*
+    IMPLEMENT HERE THE CODE FOR THE WORKER
+    Use a call to "task_function" to complete a task and return accuracy to master.
+    */
+    std::array<double, 8> received_setting;
+    MPI_Status status;
+    int master_rank = 0;
+    MPI_Recv(&received_setting, 8, MPI_DOUBLE, master_rank, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+    int received_tag = status.MPI_TAG;
+
+    while (received_tag != n_settings + 10) {
+        double current_accuracy = task_function(received_setting, ds);
+    }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     int nrank, rank;
 
     MPI_Init(&argc, &argv);                // set up MPI
@@ -226,7 +263,7 @@ int main(int argc, char *argv[]) {
     Data ds = read_data();
 
     if (rank == 0)       // rank 0 is the master
-        master(nrank-1, ds); // there is nrank-1 worker processes
+        master(nrank - 1, ds); // there is nrank-1 worker processes
     else                 // ranks in [1:nrank] are workers
         worker(rank, ds);
 
