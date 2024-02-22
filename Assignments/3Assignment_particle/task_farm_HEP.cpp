@@ -159,18 +159,15 @@ void master(int nworker, Data& ds) {
 
     // THIS CODE SHOULD BE REPLACED BY TASK FARM
     // loop over all possible cuts and evaluate accuracy
-    for (long k = 0; k < n_settings; k++)
-        accuracy[k] = task_function(settings[k], ds);
-
-
-
+    //for (long k = 0; k < n_settings; k++)
+        //accuracy[k] = task_function(settings[k], ds);
 
 
     // -- OUR CODE --
 
     // 1. Warmup
     int number_of_tasks_sent = 0;
-    for (int i = 0; i < nworker; i++) {
+    for (int i = 1; i <= nworker; i++) {
         MPI_Send(&settings[number_of_tasks_sent], 8, MPI_DOUBLE, i, number_of_tasks_sent, MPI_COMM_WORLD);
         number_of_tasks_sent++;
     }
@@ -182,7 +179,7 @@ void master(int nworker, Data& ds) {
     int send_tag;
     MPI_Status status;
     while (number_of_tasks_sent < n_settings) {
-        // Receive
+        // Receive any worker. The tag is the time sent.
         MPI_Recv(&current_accuracy, 8, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
         worker_source = status.MPI_SOURCE;
         accuracy_index = status.MPI_TAG;
@@ -195,7 +192,7 @@ void master(int nworker, Data& ds) {
         MPI_Send(&settings[number_of_tasks_sent], 8, MPI_DOUBLE, worker_source, send_tag, MPI_COMM_WORLD);
         number_of_tasks_sent++;
     }
-
+    // Warm down / Shutdown
     int shutdown_tag = n_settings + 10;
     for (int j = 1; j <= nworker; j++) {
         // Receive result
@@ -204,13 +201,10 @@ void master(int nworker, Data& ds) {
         accuracy_index = status.MPI_TAG;
         accuracy[accuracy_index] = current_accuracy;
         // Send shutdown message
-        std::array<double, 8> dummy_message = { 1, 1, 1, 1, 1, 1, 1, 1 };
+        // Message with shutdown signal has no data to be processed by worker, so create dummy data to message.
+        std::array<double, 8> dummy_message = { 1, 1, 1, 1, 1, 1, 1, 1 };  
         MPI_Send(&dummy_message, 8, MPI_DOUBLE, worker_source, shutdown_tag, MPI_COMM_WORLD);
     }
-
-
-    // THIS CODE SHOULD BE REPLACED BY TASK FARM
-    // ================================================================
 
     auto tend = std::chrono::high_resolution_clock::now(); // end time (nano-seconds)
     // diagnostics
@@ -237,18 +231,19 @@ void master(int nworker, Data& ds) {
 }
 
 void worker(int rank, Data& ds) {
-    /*
-    IMPLEMENT HERE THE CODE FOR THE WORKER
-    Use a call to "task_function" to complete a task and return accuracy to master.
-    */
     std::array<double, 8> received_setting;
     MPI_Status status;
     int master_rank = 0;
     MPI_Recv(&received_setting, 8, MPI_DOUBLE, master_rank, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
     int received_tag = status.MPI_TAG;
 
-    while (received_tag != n_settings + 10) {
+    while (received_tag != n_settings + 10) {  // Shutdown tag = n_settings + 10
+        // Send
         double current_accuracy = task_function(received_setting, ds);
+        MPI_Send(&current_accuracy, 8, MPI_DOUBLE, master_rank, received_tag, MPI_COMM_WORLD);
+        // Receive and update recieved tag
+        MPI_Recv(&received_setting, 8, MPI_DOUBLE, master_rank, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        received_tag = status.MPI_TAG;
     }
 }
 
