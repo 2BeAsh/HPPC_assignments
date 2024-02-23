@@ -151,60 +151,52 @@ void master(int nworker, Data& ds) {
 
     auto tstart = std::chrono::high_resolution_clock::now(); // start time (nano-seconds)
 
-    // ================================================================
-    /*
-    IMPLEMENT HERE THE CODE FOR THE MASTER
-    The master should pass a set of settings to a worker, and the worker should return the accuracy
-    */
-
-    // THIS CODE SHOULD BE REPLACED BY TASK FARM
-    // loop over all possible cuts and evaluate accuracy
-    //for (long k = 0; k < n_settings; k++)
-        //accuracy[k] = task_function(settings[k], ds);
-
-
     // -- OUR CODE --
 
     // 1. Warmup
-    int number_of_tasks_sent = 0;
+    int N_task_sent = 0;
     for (int i = 1; i <= nworker; i++) {
-        MPI_Send(&settings[number_of_tasks_sent], 8, MPI_DOUBLE, i, number_of_tasks_sent, MPI_COMM_WORLD);
-        number_of_tasks_sent++;
+        MPI_Send(&settings[N_task_sent], 8, MPI_DOUBLE, i, N_task_sent, MPI_COMM_WORLD);
+        N_task_sent++;
     }
 
-    // 2. The while loop
-    int current_accuracy;
-    int accuracy_index;
-    int worker_source;
-    int send_tag;
+    // 2. Send the jobs
+    double received_accuracy;
+    int worker_rank;
+    int task_number;
     MPI_Status status;
-    while (number_of_tasks_sent < n_settings) {
-        // Receive any worker. The tag is the time sent.
-        MPI_Recv(&current_accuracy, 8, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        worker_source = status.MPI_SOURCE;
-        accuracy_index = status.MPI_TAG;
 
-        // Store result
-        accuracy[accuracy_index] = current_accuracy;
+    while (N_task_sent < NO_MORE_TASKS) {
+        // Receive task result and store it
+        MPI_Recv(&received_accuracy, 1, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        worker_rank = status.MPI_SOURCE;
+        task_number = status.MPI_TAG;
+        accuracy[task_number] = received_accuracy;
+        /*if (N_task_sent < 30)
+            std::cout << "Accuracy Received from " << worker_rank << " = " << received_accuracy << "\n";*/
 
-        // Send message
-        send_tag = number_of_tasks_sent;
-        MPI_Send(&settings[number_of_tasks_sent], 8, MPI_DOUBLE, worker_source, send_tag, MPI_COMM_WORLD);
-        number_of_tasks_sent++;
+        // Send the worker a new task
+        MPI_Send(&settings[N_task_sent], 8, MPI_DOUBLE, worker_rank, N_task_sent, MPI_COMM_WORLD);
+        // Update number of tasks sent
+        N_task_sent++;
     }
-    // Warm down / Shutdown
-    int shutdown_tag = n_settings + 10;
+
+    std::cout << "Warmdown \n";
+    // 3. Warmdown / Shutdown
+    int shutdown_tag = NO_MORE_TASKS + 10;
+    std::array<double, 8> dummy_message = { 1, 1, 1, 1, 1, 1, 1, 1 };
     for (int j = 1; j <= nworker; j++) {
-        // Receive result
-        MPI_Recv(&current_accuracy, 8, MPI_DOUBLE, j, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        worker_source = status.MPI_SOURCE;
-        accuracy_index = status.MPI_TAG;
-        accuracy[accuracy_index] = current_accuracy;
+        // Recieve and store final job
+        MPI_Recv(&received_accuracy, 1, MPI_DOUBLE, j, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        int task_number = status.MPI_TAG;
+        accuracy[task_number] = received_accuracy;
+        std::cout << "Worker" << j << "Task: " << task_number << "Accuracy: " << received_accuracy << "\n";
+
+
         // Send shutdown message
-        // Message with shutdown signal has no data to be processed by worker, so create dummy data to message.
-        std::array<double, 8> dummy_message = { 1, 1, 1, 1, 1, 1, 1, 1 };  
-        MPI_Send(&dummy_message, 8, MPI_DOUBLE, worker_source, shutdown_tag, MPI_COMM_WORLD);
+        MPI_Send(&dummy_message, 8, MPI_DOUBLE, j, shutdown_tag, MPI_COMM_WORLD);
     }
+
 
     auto tend = std::chrono::high_resolution_clock::now(); // end time (nano-seconds)
     // diagnostics
@@ -216,7 +208,7 @@ void master(int nworker, Data& ds) {
             best_accuracy_score = accuracy[k];
             idx_best = k;
         }
-
+    std::cout << "Best acc idx = " << idx_best << "\n";
     std::cout << "Best accuracy obtained :" << best_accuracy_score << "\n";
     std::cout << "Final cuts :\n";
     for (int i = 0; i < 8; i++)
@@ -231,19 +223,26 @@ void master(int nworker, Data& ds) {
 }
 
 void worker(int rank, Data& ds) {
+    // Initialization
     std::array<double, 8> received_setting;
-    MPI_Status status;
     int master_rank = 0;
+    MPI_Status status;
+    int task_number;
+    double accuracy_to_send;
+    // Receive first task
     MPI_Recv(&received_setting, 8, MPI_DOUBLE, master_rank, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-    int received_tag = status.MPI_TAG;
+    task_number = status.MPI_TAG;
 
-    while (received_tag != n_settings + 10) {  // Shutdown tag = n_settings + 10
-        // Send
-        double current_accuracy = task_function(received_setting, ds);
-        MPI_Send(&current_accuracy, 8, MPI_DOUBLE, master_rank, received_tag, MPI_COMM_WORLD);
-        // Receive and update recieved tag
+    while (task_number != NO_MORE_TASKS + 10) {  // shutdown_tag =  NO_MORE_TASKS + 10
+        // Perform and send task
+        accuracy_to_send = task_function(received_setting, ds);
+        //if (task_number < 50)
+        //    std::cout << "Accuracy Sent from " << rank << " = " << accuracy_to_send << " Task Nr = " << task_number << "\n";
+        MPI_Send(&accuracy_to_send, 1, MPI_DOUBLE, master_rank, task_number, MPI_COMM_WORLD);
+
+        // Receive new task
         MPI_Recv(&received_setting, 8, MPI_DOUBLE, master_rank, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        received_tag = status.MPI_TAG;
+        task_number = status.MPI_TAG;
     }
 }
 
