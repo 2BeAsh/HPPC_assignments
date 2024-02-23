@@ -97,11 +97,6 @@ void task_function(int task) {
 
 
 void worker (int rank) {
-    /*
-    IMPLEMENT HERE THE CODE FOR THE WORKER
-    Use a call to "task_function" to complete a task
-    */
-
     // Get initial task to have a task to check if "received_task != -1" is true.
     int received_task;
     MPI_Status status;
