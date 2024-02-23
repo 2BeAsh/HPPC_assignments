@@ -189,7 +189,7 @@ void master(int nworker, Data& ds) {
         accuracy[task_number] = received_accuracy;
 
         // Send shutdown message
-        MPI_Send(&settings[-1], 8, MPI_DOUBLE, j, shutdown_tag, MPI_COMM_WORLD);
+        MPI_Send(&settings[0], 8, MPI_DOUBLE, j, shutdown_tag, MPI_COMM_WORLD);
     }
 
 
