@@ -1,0 +1,74 @@
+\documentclass{article}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{subfig}
+\usepackage{float}
+\lstset{language=C++,
+                keywordstyle=\color{blue},
+                stringstyle=\color{red},
+                commentstyle=\color{green},
+                morecomment=[l][\color{magenta}]{\#}
+}
+
+\title{Assignment \#3}
+\author{Emma (JFV491), Michael (LVP115) and Tobias (CWR879)}
+\date{Februrary 2024}
+
+\begin{document}
+\maketitle
+%
+\section{Simple Master-worker program}
+Our algorithm for the simple master-worker task farming program will now be explained. We only used blocking code, but we will briefly mention parts where one could use non-blocking. The program is split into a \textbf{Master} and a \textbf{Worker} section. The \textbf{Master} part consists of three core parts, 1. \textit{Warmup}, 2. \textit{Perform tasks}, and 3. \textit{Warm down}. In the 1. \textit{Warmup phase}, we loop over each worker and send them a task to get communication between all workers and the master going. This could have been done non-blocking, such that the master sent a message to all workers simultaneously. 
+We use tags to make sure the results of the workers are stored in the same order as they were sent out by tracking the number of tasks $N_\text{task}$ sent. By using $N_\text{task}$ as the master-worker messages' tag, we know at what time/task order each message is sent.
+Next, in 2. \textit{Perform tasks}, while not all tasks have been sent out, the master first receives a message from \textit{any} worker (i.e. the first worker to be done), then extracts that worker's tag and rank, stores the result using the tag and sends back a new task to that worker using the extracted rank. The sent message's tag is $N_\text{task}$. Then $N_\text{task}\leftarrow N_\text{task} + 1$. 
+At last, we must collect the workers' final message and shut down their processes. In 3. \textit{Warm down}, we loop over each worker to get their final task result and then send them a shutdown signal. As with the 1. \textit{Warmup} phase, this could be done non-blocking. The \textbf{Worker} first receives a message from the master from which it can extract the tag. Then, while it has not received a shutdown signal, it performs the task (in this case, wait \textit{task} amount of milliseconds, in the HEP case, calculate the accuracy). The result of the task is then sent to the master using the current tag. Whenever the master receives a message, it sends back a new task, so the worker now receives this task from the master, and the current tag is updated to be the newly received task's tag.
+%
+\section{HEP Master-worker program}
+The algorithm is the same as the one described in the previous chapter. We get the same results using the sequential and the parallelized HEP task farming, but the speed changes drastically from:
+\begin{align}
+    t_\text{single task}^\text{seq} = xxx, \quad t_\text{single task}^\text{par} = yyy 
+\end{align}
+\textit{insert total time? }
+%
+\section{Strong Scaling of HEP}
+%
+\subsection{Task time}
+In fig \ref{fig: ex3a task times}, both the absolute (upper graph) and relative (lower graph) time taken to run the HEP program can be seen for a different number of cores. For all but the lowest number of cores, the CPU time per task is approximately a flat line, which is the ideal case, but when the number of cores goes below about $10$, it is not even linear. For simplicity, only a single node was used. Furthermore, the single task and total time graphs have almost converged at $64$ cores, so no need to go further beyond. The lower graph shows the speed relative to the performance of one worker processor. Our result seems questionably good and looks more like something you would see in a weak-scaling scenario as opposed to our strong-scaling scenario. 
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=\textwidth]{images/ex3a_time_per_task.png}
+    \caption{\textbf{Upper graph}: Absolute scaling. The time for a single task, CPU time per task and total time spent vs. the number of processors. All using $1$ node and $n_{cuts}=3$. The colour of the lines indicates which axis, and thus time-scale, they belong to (purple for $\mu$ seconds and red for seconds). \textbf{Lower graph}: Relative scaling. The ideal scaling and our achieved speedup}
+    \label{fig: ex3a task times}
+\end{figure}
+%
+%
+\subsection{Amdahl's Law}
+We took four data points for one core to get the uncertainty on that point, which we used to find the uncertainty on the rest of the points in the relative scaling graph using error propagation yielding:
+\begin{equation}
+    \sigma(N_{core}) = N_{core} \sigma({N_{core}}=1)
+\end{equation}
+Since the equation for the relative scaling is:
+\begin{align}
+    S({N_{core}}) = S({N_{core}} = 1) \cdot {N_{core}}
+\end{align}
+This was used in fig \ref{fig: ex3b amdahl} when we fitted the data to Ahmdahl's law:
+\begin{align}
+    S(N_{core}; p) = \frac{1}{(1 -p) + \frac{p}{N_{core}}}
+\end{align}
+Where $p$ is the fraction of the code that is parallized. We find that the fraction is $p=0.991 \pm 0.002$, which, again, is questionably good. 
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=\textwidth]{images/ex3b_amdahl.png}
+    \caption{By fitting the speedup scaling to Ahmdahl's law, we get that the parallel fraction of the code is $0.991\pm 0.002$. The uncertainties are found from the uncertainty on the first point.}
+    \label{fig: ex3b amdahl}
+\end{figure}
+
+\subsection{Discussion and HEP advice}
+
+%
+\newpage
+\section*{C++ Code}
+%\lstinputlisting[language=c]{.cpp} 
+\end{document}
