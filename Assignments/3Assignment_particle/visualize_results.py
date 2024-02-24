@@ -24,17 +24,17 @@ mean_total = np.mean(time_total_one_worker)
 std_total = np.std(time_total_one_worker) / np.sqrt(time_total_one_worker.size)
 
 # Remove the one worker points and insert the mean instead
-Ntasks = np.append(Ntasks[not_one_worker_idx], 2)
+Ntasks = np.append(Ntasks[not_one_worker_idx], 2) - 1  # -1 to remove master
 time_task = np.append(time_task[not_one_worker_idx], mean_task)
 time_total = np.append(time_total[not_one_worker_idx], mean_total)
-
-CPU_time_per_task = time_task * (Ntasks - 1)  # -1 because of Master
 
 # Sort data
 sort_idx = np.argsort(Ntasks)
 Ntasks = Ntasks[sort_idx]
 time_task = time_task[sort_idx]
 time_total = time_total[sort_idx]
+
+CPU_time_per_task = time_task * Ntasks 
 
 
 # -- SUBTASK A --
@@ -59,9 +59,8 @@ def subtask_A():
                     Line2D([], [], color=ax_twin_color, ls="--", marker="x", label="Total time")]
     ax.legend(handles=legend_elements, loc="lower center", bbox_to_anchor=(0.5, 0.95), ncol=3)
 
-    # Ax 1 - relative
-
-    N_worker = Ntasks - 1    
+    # Ax 1 - relative 
+    N_worker = Ntasks
     time_task_rel = time_task[0] / time_task  # Ignore the first point as it 
     ax1.plot(N_worker, N_worker, c="deepskyblue", label="Ideal")  
     ax1.plot(N_worker, time_task_rel, ls="--", marker=".", c="darkorange", label="Data")  # -1 to remove master
@@ -86,7 +85,7 @@ def subtask_B():
         S_latency = 1 / ((1 - parallel_fraction) + parallel_fraction / N_processor)
         return S_latency
 
-    N_worker = Ntasks - 1
+    N_worker = Ntasks
     time_task_rel = time_task[0] / time_task 
     std_task_rel = std_task * time_task_rel
 
@@ -98,9 +97,10 @@ def subtask_B():
     ax.errorbar(N_worker, time_task_rel, yerr=std_task_rel, ls="--", fmt=".", c="darkorange", label="Data") 
     ax.plot(x_fit, y_fit, "-", label="Fit")
     ax.set(xlabel="Number of cores", ylabel="Speedup")
+    ax.axhline(0, c="black", lw=1)
     ax.legend(loc="lower center", bbox_to_anchor=(0.5, 0.95), ncol=3)
-    str_result = r"$P = $" + f"{par[0]:.3f}" + r"$\pm$" + f"{err[0]:.3f}"
-    ax.text(10, 40, s=str_result)
+    str_result = r"$Par. frac = $" + f"{par[0]:.3f}" + r"$\pm$" + f"{err[0]:.3f}"
+    ax.text(20, 100, s=str_result)
 
     figname = "ex3b_amdahl.png"
     plt.savefig(figname)
