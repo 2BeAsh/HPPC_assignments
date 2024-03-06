@@ -1,0 +1,32 @@
+verbose = False
+
+wave_pos = []
+g = 9.80665
+depth = 1
+unit_dt = dt * data_period
+wave_length = []
+
+for time in range(np.ma.size(data,0)):
+    slice = data[time,int(Nx/2):Nx,int(Ny/2)]
+    wave_pos.append(np.argmax(slice))
+    wave_length.append(sum(slice>0.01))
+
+
+diff = np.diff(wave_pos)
+c_numerical = np.mean(diff[-int(np.ma.size(data,0)/3)])/unit_dt
+c_analytical = np.sqrt(g)
+timeresolutionlimit = dx/c_numerical
+wavelengthresolutionlimit = np.min(wave_length)
+
+if verbose == True:
+    print(f'Wave top positions: {wave_pos} in [m]')
+    print(f'Difference between wave top positions for averaging (Should be roughly the same value): {diff[-3:]}')
+    print(f'Timestep is {dt} and should be below the time resolution limit of {timeresolutionlimit}')
+    print(f'Wave is at the lowest {wavelengthresolutionlimit} gridpoints wide which should be above 10')
+    print(f'Numerical C is {c_numerical}')
+    print(f'Analytical C is {c_analytical}')
+
+if c_numerical / c_analytical < 0.9 or c_numerical / c_analytical > 1.1 or dt > timeresolutionlimit or wavelengthresolutionlimit < 10:
+    print('Simulation is unstable')
+else:
+    print('Simulation is stable')
