@@ -92,7 +92,7 @@ void to_file(const std::vector<grid_t> &water_history, const std::string &filena
  * @param shape  The shape of data including the ghost lines.
  */
 void exchange_horizontal_ghost_lines(grid_t& data) {
-    #pragma acc parallel loop
+    #pragma acc parallel loop gang vector
     for (uint64_t j = 0; j < NX; ++j) {
         data[0][j]      = data[NY-2][j]; 
         data[NY-1][j]   = data[1][j];
@@ -105,7 +105,7 @@ void exchange_horizontal_ghost_lines(grid_t& data) {
  * @param shape  The shape of data including the ghost lines.
  */
 void exchange_vertical_ghost_lines(grid_t& data) {
-    #pragma acc parallel loop
+    #pragma acc parallel loop gang vector 
     for (uint64_t i = 0; i < NY; ++i) {
         data[i][0] = data[i][NX-2];
         data[i][NX-1] = data[i][1];
