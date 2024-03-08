@@ -105,7 +105,6 @@ void exchange_horizontal_ghost_lines(grid_t& data) {
  * @param shape  The shape of data including the ghost lines.
  */
 void exchange_vertical_ghost_lines(grid_t& data) {
-    // #pragma acc data present(data)
     #pragma acc parallel loop num_gangs(NUM_GANGS)
     for (uint64_t i = 0; i < NY; ++i) {
         data[i][0] = data[i][NX-2];

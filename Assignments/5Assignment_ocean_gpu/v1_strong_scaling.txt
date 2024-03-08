@@ -1,0 +1,3 @@
+v1, Scaling factor 2
+NUM_GANGS, Time
+1, 
