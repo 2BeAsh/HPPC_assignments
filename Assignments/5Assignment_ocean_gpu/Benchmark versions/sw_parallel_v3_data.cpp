@@ -93,8 +93,7 @@ void to_file(const std::vector<grid_t> &water_history, const std::string &filena
  * @param shape  The shape of data including the ghost lines.
  */
 void exchange_horizontal_ghost_lines(grid_t& data) {
-    // #pragma acc data present(data)
-    #pragma acc parallel loop async present(data) //gang vector // num_gangs(NUM_GANGS)
+    #pragma acc parallel loop async present(data) num_gangs(NUM_GANGS)
     for (uint64_t j = 0; j < NX; ++j) {
         data[0][j]      = data[NY-2][j]; 
         data[NY-1][j]   = data[1][j];
@@ -108,7 +107,7 @@ void exchange_horizontal_ghost_lines(grid_t& data) {
  */
 void exchange_vertical_ghost_lines(grid_t& data) {
     // #pragma acc data present(data)
-    #pragma acc parallel loop async present(data) //gang vector  
+    #pragma acc parallel loop async present(data) num_gangs(NUM_GANGS)
     for (uint64_t i = 0; i < NY; ++i) {
         data[i][0] = data[i][NX-2];
         data[i][NX-1] = data[i][1];
@@ -134,14 +133,14 @@ void integrate(Water &w, const real_t dt, const real_t dx, const real_t dy, cons
         #pragma acc wait  // Need to wait as the next line is dependent on the previous
         exchange_vertical_ghost_lines(w.e);
 
-        #pragma acc parallel loop present(w) tile(4, 4) //gang vector // - Not sure if tile or collapse is faster
+        #pragma acc parallel loop present(w) collapse(2) num_gangs(NUM_GANGS) //gang vector // - Not sure if tile or collapse is faster
         for (uint64_t i = 0; i < NY - 1; ++i) 
         for (uint64_t j = 0; j < NX - 1; ++j) {
             w.u[i][j] -= dt / dx * g * (w.e[i][j+1] - w.e[i][j]);
             w.v[i][j] -= dt / dy * g * (w.e[i + 1][j] - w.e[i][j]);
         }
 
-        #pragma acc parallel loop present(w) tile(4, 4) //gang vector 
+        #pragma acc parallel loop present(w) collapse(2) num_gangs(NUM_GANGS)
         for (uint64_t i = 1; i < NY - 1; ++i) 
         for (uint64_t j = 1; j < NX - 1; ++j) {
             w.e[i][j] -= dt / dx * (w.u[i][j] - w.u[i][j-1])
