@@ -66,7 +66,7 @@ public:
     grid_t v{}; // The speed in the vertical direction.
     grid_t e{}; // The water elevation.
     Water() {
-        #pragma acc parallel loop gang vector collapse(2)
+        //#pragma acc parallel loop gang vector collapse(2)
         for (size_t i = 1; i < NY - 1; ++i) 
         for (size_t j = 1; j < NX - 1; ++j) {
             real_t ii = 100.0 * (i - (NY - 2.0) / 2.0) / NY;
@@ -129,7 +129,7 @@ void integrate(Water &w, const real_t dt, const real_t dx, const real_t dy, cons
         w.v[i][j] -= dt / dy * g * (w.e[i + 1][j] - w.e[i][j]);
     }
 
-    #pragma acc parallel loop gang vector collapse(2) // reduction(-:w.e)  // OBS reduction når det er e[i][j] ??
+    // #pragma acc parallel loop gang vector collapse(2) // reduction(-:w.e)  // OBS reduction når det er e[i][j] ??
     for (uint64_t i = 1; i < NY - 1; ++i) 
     for (uint64_t j = 1; j < NX - 1; ++j) {
         w.e[i][j] -= dt / dx * (w.u[i][j] - w.u[i][j-1])
