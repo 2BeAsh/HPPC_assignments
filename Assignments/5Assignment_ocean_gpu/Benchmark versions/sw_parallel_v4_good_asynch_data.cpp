@@ -124,8 +124,8 @@ void integrate(Water &w, const real_t dt, const real_t dx, const real_t dy, cons
         exchange_horizontal_ghost_lines(w.e, 1);
         exchange_vertical_ghost_lines(w.u, 4);
         exchange_vertical_ghost_lines(w.e, 1);
-        #pragma acc wait(2) async(1)  // OBS Do we need this wait??
-        #pragma acc wait(4) async(1)  // OBS Do we need this wait??
+        #pragma acc wait(2) async(1) 
+        #pragma acc wait(4) async(1)  
 
         #pragma acc parallel loop async(1) present(w) collapse(2) num_gangs(NUM_GANGS) //gang vector // - Not sure if tile or collapse is faster
         for (uint64_t i = 0; i < NY - 1; ++i) 
