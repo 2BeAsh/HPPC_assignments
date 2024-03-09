@@ -122,14 +122,14 @@ void integrate(Water &w, const real_t dt, const real_t dx, const real_t dy, cons
         exchange_vertical_ghost_lines(w.u);
         exchange_vertical_ghost_lines(w.e);
 
-        #pragma acc parallel loop collapse(2) num_gangs(NUM_GANGS)
+        // #pragma acc parallel loop collapse(2) num_gangs(NUM_GANGS)
         for (uint64_t i = 0; i < NY - 1; ++i) 
         for (uint64_t j = 0; j < NX - 1; ++j) {
             w.u[i][j] -= dt / dx * g * (w.e[i][j+1] - w.e[i][j]);
             w.v[i][j] -= dt / dy * g * (w.e[i + 1][j] - w.e[i][j]);
         }
         
-        #pragma acc parallel loop collapse(2) num_gangs(NUM_GANGS)
+        // #pragma acc parallel loop collapse(2) num_gangs(NUM_GANGS)
         for (uint64_t i = 1; i < NY - 1; ++i) 
         for (uint64_t j = 1; j < NX - 1; ++j) {
             w.e[i][j] -= dt / dx * (w.u[i][j] - w.u[i][j-1])
