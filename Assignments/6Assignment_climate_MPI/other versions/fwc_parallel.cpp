@@ -65,12 +65,15 @@ double checksum(World &world) {
     int send_count = 1;
     int receiving_rank = 0;
     MPI_Reduce(&cs, &cs_combined, send_count, MPI_DOUBLE, MPI_SUM, receiving_rank, MPI_COMM_WORLD);
-
-
-    if (mpi_rank == 0){
-        std::cout << "checksum      : " << cs_combined << std::endl;
-    }
     
+    // if (mpi_rank == 0){
+    // // Loop over all other ranks, receive, sum up results
+    // }
+    
+    // else{
+    //     // Send cs to rank 0
+    // }
+        
     return cs_combined;
 }
 
@@ -116,7 +119,7 @@ void stat(World &world) {
  * @param world  The world to fix the boundaries for.
  */
 void exchange_ghost_cells(World &world) {
-    // Probably finished TODO: figure out exchange of ghost cells bewteen ranks
+    // TODO: figure out exchange of ghost cells bewteen ranks
     // Columns
 	// For the current rank, send idx=1 column to rank-1, the idx=-2 column to rank+1
 	std::vector<double> column_send_left;  // Send to rank - 1
@@ -357,11 +360,8 @@ void simulate(uint64_t num_of_iterations, const std::string& model_filename, con
     // if (mpi_rank == 0){ // OBS should all ranks run this?
     // }
     stat(world);
-    checksum(world);
-
-    if (mpi_rank == 0){
-    std::cout << "elapsed time  : " << (end - begin).count() / 1000000000.0 << " sec" << std::endl;        
-    }
+    std::cout << "checksum      : " << checksum(world) << std::endl;
+    std::cout << "elapsed time  : " << (end - begin).count() / 1000000000.0 << " sec" << std::endl;
 }
 
 /** Main function that parses the command line and start the simulation */
